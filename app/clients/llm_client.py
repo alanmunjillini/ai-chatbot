@@ -1,6 +1,6 @@
 from openai import OpenAI
 from httpx import Timeout
-from .config import VLLM_BASE_URL, VLLM_API_KEY
+from app.core.config import VLLM_BASE_URL, VLLM_API_KEY
 
 client = OpenAI(
     base_url=VLLM_BASE_URL,

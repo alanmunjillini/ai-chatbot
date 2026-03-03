@@ -5,9 +5,9 @@ import json
 import logging
 import time
 
-from .redis_client import redis_client
-from .llm_client import client
-from .metrics import (
+from app.clients.redis_client import redis_client
+from app.clients.llm_client import client
+from app.observability.metrics import (
     REQUEST_COUNT,
     REQUEST_ERRORS,
     REQUEST_LATENCY,
