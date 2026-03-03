@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import json
 import logging
 import time
+from fastapi import HTTPException
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.clients.redis_client import redis_client
 from app.clients.llm_client import client
@@ -56,7 +57,7 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
 
     if not acquired:
         IN_PROGRESS.labels(endpoint=endpoint_name).dec()
-        return {"error": "Another request is already in progress for this user"}
+        raise HTTPException(status_code=409, detail="Another request in progress")
 
     try:
         # Read session history
@@ -121,6 +122,19 @@ async def chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
         REQUEST_LATENCY.labels(endpoint=endpoint_name).observe(duration)
         IN_PROGRESS.labels(endpoint=endpoint_name).dec()
 
+# Reset Endpoint
+@router.post("/reset")
+def reset(user_id: str = Depends(get_current_user)):
+    redis_client.delete(f"chat:{user_id}")
+    return {"status": "reset"}
+
+
+@router.get("/history")
+def get_history(user_id: str = Depends(get_current_user)):
+    key = f"chat:{user_id}"
+    history_raw = redis_client.lrange(key, 0, -1)
+    history = [json.loads(item) for item in history_raw]
+    return history
 
 # Health Endpoint
 @router.get("/health")

@@ -10,8 +10,14 @@ let loginPromise = null;
 // ========================================
 window.onload = async function () {
     disableInput(true);
+
     loginPromise = ensureLogin();
     await loginPromise;
+
+    if (token) {
+        await loadHistory();
+    }
+
     disableInput(false);
 };
 
@@ -23,8 +29,8 @@ function disableInput(disabled) {
     const input = document.getElementById("input");
     const button = document.querySelector("button");
 
-    input.disabled = disabled;
-    button.disabled = disabled;
+    if (input) input.disabled = disabled;
+    if (button) button.disabled = disabled;
 }
 
 
@@ -57,8 +63,8 @@ async function ensureLogin() {
         }
 
         const data = await response.json();
-
         token = data.access_token;
+
         localStorage.setItem("token", token);
 
         console.log("Login successful");
@@ -70,11 +76,70 @@ async function ensureLogin() {
 
 
 // ========================================
+// Load history from backend
+// ========================================
+async function loadHistory() {
+
+    try {
+        const response = await fetch("/history", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        if (!response.ok) {
+            console.error("Failed to load history");
+            return;
+        }
+
+        const history = await response.json();
+        const messages = document.getElementById("messages");
+
+        messages.innerHTML = "";
+
+        history.forEach(msg => {
+            const div = document.createElement("div");
+            div.className = "message " + msg.role;
+            div.innerText = msg.content;
+            messages.appendChild(div);
+        });
+
+        messages.scrollTop = messages.scrollHeight;
+
+    } catch (err) {
+        console.error("History load error:", err);
+    }
+}
+
+
+// ========================================
+// Reset chat
+// ========================================
+async function resetChat() {
+
+    if (!token) return;
+
+    try {
+        await fetch("/reset", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        document.getElementById("messages").innerHTML = "";
+
+    } catch (err) {
+        console.error("Reset error:", err);
+    }
+}
+
+
+// ========================================
 // Send message
 // ========================================
 async function send() {
 
-    // 等待登录完成
     if (loginPromise) {
         await loginPromise;
     }
@@ -156,3 +221,6 @@ document.getElementById("input")
             send();
         }
     });
+
+window.send = send;
+window.resetChat = resetChat;

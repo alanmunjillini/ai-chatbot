@@ -8,17 +8,28 @@
 <body>
 
 <div class="chat-wrapper">
+
+    <!-- Header -->
     <div class="chat-header">
-        <h2>AI Chat Demo</h2>
-        <span class="status">● Connected</span>
+        <div class="header-left">
+            <h2>AI Chat Demo</h2>
+            <span class="status" id="status">● Connected</span>
+        </div>
+
+        <div class="header-right">
+            <button class="reset-btn" onclick="resetChat()">New Chat</button>
+        </div>
     </div>
 
+    <!-- Messages -->
     <div class="chat-messages" id="messages"></div>
 
+    <!-- Input -->
     <div class="chat-input">
         <input id="input" placeholder="Type a message..." />
-        <button onclick="send()">Send</button>
+        <button id="sendBtn" onclick="send()">Send</button>
     </div>
+
 </div>
 
 <script src="app.js"></script>
