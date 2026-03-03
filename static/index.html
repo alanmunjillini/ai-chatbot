@@ -2,155 +2,25 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>AI Chat Demo</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-            background: #f5f7fa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        .chat-container {
-            width: 600px;
-            height: 80vh;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-header {
-            padding: 16px;
-            font-weight: bold;
-            border-bottom: 1px solid #eee;
-            text-align: center;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-        }
-
-        .message {
-            margin-bottom: 12px;
-            padding: 10px 14px;
-            border-radius: 12px;
-            max-width: 75%;
-            line-height: 1.4;
-        }
-
-        .user {
-            background: #4f8cff;
-            color: white;
-            margin-left: auto;
-        }
-
-        .bot {
-            background: #f0f0f0;
-            color: #333;
-            margin-right: auto;
-        }
-
-        .chat-input {
-            display: flex;
-            border-top: 1px solid #eee;
-        }
-
-        .chat-input input {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .chat-input button {
-            padding: 14px 20px;
-            border: none;
-            background: #4f8cff;
-            color: white;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .chat-input button:hover {
-            background: #3a6fdc;
-        }
-
-        .loading {
-            font-style: italic;
-            opacity: 0.6;
-        }
-    </style>
+    <title>AI Chat</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div class="chat-container">
+<div class="chat-wrapper">
     <div class="chat-header">
-        AI Chat Demo 🚀
+        <h2>AI Chat Demo</h2>
+        <span class="status">● Connected</span>
     </div>
 
     <div class="chat-messages" id="messages"></div>
 
     <div class="chat-input">
-        <input id="input" placeholder="Type your message..." onkeydown="if(event.key==='Enter') send()" />
+        <input id="input" placeholder="Type a message..." />
         <button onclick="send()">Send</button>
     </div>
 </div>
 
-<script>
-async function send() {
-    const input = document.getElementById("input");
-    const messages = document.getElementById("messages");
-
-    const text = input.value.trim();
-    if (!text) return;
-
-    // User message
-    const userDiv = document.createElement("div");
-    userDiv.className = "message user";
-    userDiv.innerText = text;
-    messages.appendChild(userDiv);
-
-    input.value = "";
-    messages.scrollTop = messages.scrollHeight;
-
-    // Loading message
-    const loadingDiv = document.createElement("div");
-    loadingDiv.className = "message bot loading";
-    loadingDiv.innerText = "Thinking...";
-    messages.appendChild(loadingDiv);
-    messages.scrollTop = messages.scrollHeight;
-
-    try {
-        const response = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text })
-        });
-
-        const data = await response.json();
-
-        loadingDiv.remove();
-
-        const botDiv = document.createElement("div");
-        botDiv.className = "message bot";
-        botDiv.innerText = data.reply;
-        messages.appendChild(botDiv);
-
-        messages.scrollTop = messages.scrollHeight;
-
-    } catch (err) {
-        loadingDiv.innerText = "Error connecting to server.";
-    }
-}
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
