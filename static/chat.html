@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AI Chat | Alan Mu</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="chat-body">
+
+<div class="chat-wrapper">
+
+    <div class="chat-header">
+        <div class="header-left">
+            <h2>AI Chat</h2>
+            <span class="status">● Connected</span>
+        </div>
+
+        <div class="header-right">
+            <button onclick="resetChat()" class="ghost-btn">New Chat</button>
+            <a href="/intro" class="ghost-btn">About</a>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="messages"></div>
+
+    <div class="chat-input">
+        <input id="input" placeholder="Ask something intelligent..." />
+        <button onclick="send()">Send</button>
+    </div>
+
+</div>
+
+<script src="/static/app.js?v=5"></script>
+</body>
+</html>
