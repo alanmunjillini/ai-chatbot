@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import json
 import logging
 import time
-
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from app.clients.redis_client import redis_client
 from app.clients.llm_client import client
 from app.observability.metrics import (
@@ -14,7 +14,14 @@ from app.observability.metrics import (
     IN_PROGRESS,
 )
 
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi import Depends, Header
+from app.core.security import decode_token
+
+def get_current_user(authorization: str = Header(...)):
+    token = authorization.replace("Bearer ", "")
+    user_id = decode_token(token)
+    return user_id
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,7 +29,6 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
-    user_id: str = "demo_user"
 
 
 # Metrics Endpoint
@@ -33,7 +39,7 @@ def metrics():
 
 # Chat Endpoint 
 @router.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user_id: str = Depends(get_current_user)):
 
     endpoint_name = "chat"
 
@@ -42,8 +48,8 @@ async def chat(req: ChatRequest):
 
     start_time = time.time()
 
-    key = f"chat:{req.user_id}"
-    lock_key = f"lock:{req.user_id}"
+    key = f"chat:{user_id}"
+    lock_key = f"lock:{user_id}"
 
     # Acquire per-user lock
     acquired = redis_client.set(lock_key, "1", nx=True, ex=60)
