@@ -4,6 +4,10 @@ from pydantic import BaseModel
 import json
 from .redis_client import redis_client
 from .llm_client import client
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -14,36 +18,75 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def chat(req: ChatRequest):
 
+    start_time = time.time()
+    logger.info(f"Incoming chat request | user_id={req.user_id}")
+
     def stream_generator():
-        key = f"chat:{req.user_id}"
+        try:
+            key = f"chat:{req.user_id}"
 
-        history_raw = redis_client.lrange(key, 0, -1)
-        history = [json.loads(item) for item in history_raw]
+            history_raw = redis_client.lrange(key, 0, -1)
+            history = [json.loads(item) for item in history_raw]
 
-        messages = (
-            [{"role": "system", "content": "Respond clearly in English only."}]
-            + history
-            + [{"role": "user", "content": req.message}]
-        )
+            logger.info(f"History length={len(history)} | user_id={req.user_id}")
 
-        response = client.chat.completions.create(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
-            messages=messages,
-            max_tokens=128,
-            temperature=0.3,
-            stream=True,
-        )
+            messages = (
+                [{"role": "system", "content": "Respond clearly in English only."}]
+                + history
+                + [{"role": "user", "content": req.message}]
+            )
 
-        full_response = ""
+            response = client.chat.completions.create(
+                model="mistralai/Mistral-7B-Instruct-v0.2",
+                messages=messages,
+                max_tokens=128,
+                temperature=0.3,
+                stream=True,
+            )
 
-        for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                full_response += content
-                yield content
+            full_response = ""
 
-        redis_client.rpush(key, json.dumps({"role": "user", "content": req.message}))
-        redis_client.rpush(key, json.dumps({"role": "assistant", "content": full_response}))
-        redis_client.ltrim(key, -20, -1)
+            for chunk in response:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_response += content
+                    yield content
+
+            redis_client.rpush(key, json.dumps({"role": "user", "content": req.message}))
+            redis_client.rpush(key, json.dumps({"role": "assistant", "content": full_response}))
+            redis_client.ltrim(key, -20, -1)
+
+            duration = round(time.time() - start_time, 3)
+            logger.info(f"Chat completed | user_id={req.user_id} | latency={duration}s")
+
+        except Exception as e:
+            logger.exception("Chat error occurred")
+            yield "\n\n Model unavailable."
 
     return StreamingResponse(stream_generator(), media_type="text/plain")
+
+
+@router.get("/health")
+def health_check():
+    status = {"api": "ok"}
+
+    # Check Redis
+    try:
+        redis_client.ping()
+        status["redis"] = "ok"
+    except Exception:
+        status["redis"] = "down"
+
+    # Check LLM backend
+    try:
+        client.models.list()  
+        status["llm"] = "ok"
+    except Exception:
+        status["llm"] = "down"
+
+    overall_status = "ok" if all(v == "ok" for v in status.values()) else "degraded"
+
+    return {
+        "status": overall_status,
+        "details": status
+    }
