@@ -6,6 +6,14 @@ from .redis_client import redis_client
 from .llm_client import client
 import logging
 import time
+from .metrics import (
+    REQUEST_COUNT,
+    REQUEST_ERRORS,
+    REQUEST_LATENCY,
+    IN_PROGRESS,
+)
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi import Response
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +23,19 @@ class ChatRequest(BaseModel):
     message: str
     user_id: str = "demo_user"
 
+@router.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
 
+    endpoint_name = "chat"
+
+    REQUEST_COUNT.labels(endpoint=endpoint_name).inc()
+    IN_PROGRESS.labels(endpoint=endpoint_name).inc()
+
     start_time = time.time()
-    logger.info(f"Incoming chat request | user_id={req.user_id}")
 
     def stream_generator():
         try:
@@ -27,8 +43,6 @@ async def chat(req: ChatRequest):
 
             history_raw = redis_client.lrange(key, 0, -1)
             history = [json.loads(item) for item in history_raw]
-
-            logger.info(f"History length={len(history)} | user_id={req.user_id}")
 
             messages = (
                 [{"role": "system", "content": "Respond clearly in English only."}]
@@ -56,12 +70,13 @@ async def chat(req: ChatRequest):
             redis_client.rpush(key, json.dumps({"role": "assistant", "content": full_response}))
             redis_client.ltrim(key, -20, -1)
 
-            duration = round(time.time() - start_time, 3)
-            logger.info(f"Chat completed | user_id={req.user_id} | latency={duration}s")
-
-        except Exception as e:
-            logger.exception("Chat error occurred")
-            yield "\n\n Model unavailable."
+        except Exception:
+            REQUEST_ERRORS.labels(endpoint=endpoint_name).inc()
+            raise
+        finally:
+            duration = time.time() - start_time
+            REQUEST_LATENCY.labels(endpoint=endpoint_name).observe(duration)
+            IN_PROGRESS.labels(endpoint=endpoint_name).dec()
 
     return StreamingResponse(stream_generator(), media_type="text/plain")
 
