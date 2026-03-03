@@ -6,7 +6,7 @@ from openai import OpenAI
 app = FastAPI()
 
 client = OpenAI(
-    base_url="http://10.164.0.2:8000/v1",
+    base_url="http://34.158.134.42:8000/v1",
     api_key="alanmunj"
 )
 
